@@ -1,0 +1,133 @@
+---
+title: "Analysis of Severe Weather Events and Storms in the US (1950 - 2011) and their Effects on the Population and Economy. (04/10/2019)"
+output: html_document
+---
+#Synopsis
+Storms and other severe weather events can cause both public health and economic problems for communities and municipalities. Many severe events can result in fatalities, injuries, and property damage, and preventing such outcomes to the extent possible is a key concern.
+
+This report seeks to analyse the consequences of severe weather events and answer two key questions - 
+
+1. Across the United States, which types of events are most harmful with respect to population health?
+2. Across the United States, which types of events have the greatest economic consequences?
+
+Using data from the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database, the process followed for the analysis is -
+
+* We focus on the total number of fatalities and injuries caused by each weather event to look at the effect of these events on the human population.
+* We focus on the total damages to property and crops caused by each weather event to look at the consequences of these events on the economy.
+  
+#Data Processing
+The data used for this report was gathered from the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database. It was collected on October 4, 2019.
+The data, spread across 1950 - 2011, is sparse in the beginning and more informative for later years.
+
+Following is the code used to process the data.
+```{r data preprocessing}
+#Reading and PreProcessing Data
+weather <- read.csv(paste(getwd(),"/Raw Data/repdata_data_StormData.csv", sep = ""), header = TRUE, sep = ",")
+library(ggplot2)
+library(tidyr)
+```
+
+#Data Analysis
+The data is then used to answer the two primary questions. The methods for the analysis are given below.
+
+##Most Harmful Events for Population Health
+```{r question one}
+#1: Event Type vs. Population Health
+weather2 <- weather[,c(8,23,24)]
+
+#collecting event type data for which casualities > 0
+popu.damage <- data.frame(event = weather2[which(as.character(weather2$FATALITIES) != "0" | 
+                                                   as.character(weather2$INJURIES) != "0"),1],
+                            fatalities = weather2[which(as.character(weather2$FATALITIES) != "0"| 
+                                                   as.character(weather2$INJURIES) != "0"),2],
+                            injuries = weather2[which(as.character(weather2$FATALITIES) != "0"  | 
+                                                        as.character(weather2$INJURIES) != "0"),3])
+
+#grouping and calculating total damage according to event type
+popu.damage2 <- aggregate(popu.damage[,2:3], by = list(popu.damage$event), FUN = sum)
+colnames(popu.damage2) <- c("Events", "Fatalities", "Injuries")
+summary(popu.damage2)
+
+#Number of disasters is too large to plot, and the mean is very skewed. Therefore, we select a few major # #disasters, each with a large number of casualities
+major.disasters <- popu.damage2[which(popu.damage2$Fatalities >= 200 & popu.damage2$Injuries >= 200),]
+major.disasters$Total <- major.disasters$Fatalities + major.disasters$Injuries
+
+#Plotting
+ggplot(major.disasters, aes(Events)) +
+  geom_bar(aes(y = Injuries/10000, fill = "Injuries"), stat = "Identity") +           #for Injuries
+  geom_bar(aes(y = Fatalities/10000, fill = "Fatalities"), stat = "Identity") +       #for Fatalities
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +             #rotating axis labels
+  labs(y = "Count (x10^4)", title = "Most Harmful Weather Events \non Population Health in the US") + 
+  scale_fill_discrete(name = "Type of Casuality") +                                   #editing legend title
+  theme(plot.title = element_text(hjust = 0.5))                                       #aligning plot title
+
+#summary of data
+max1.A <- major.disasters[which.max(major.disasters$Injuries),1]
+total1.A <- major.disasters[which(major.disasters$Events == max1.A),3]
+max2.A <- major.disasters[which.max(major.disasters$Fatalities),1]
+total2.A <- major.disasters[which(major.disasters$Events == max2.A),2]
+overall.A <- major.disasters[which.max(major.disasters$Total),1]
+overall.total.A <- major.disasters[which(major.disasters$Events == overall.A),4]
+
+#printing the summary
+print(paste("The Event Type causing Maximum no. of Injuries in the US is ", max1.A, ". It caused a total of ", total1.A, " injuries over the years.", sep = ""))
+print(paste("The Event Type causing Maximum no. of Deaths in the US is ", max2.A, ". It caused a total of ", total2.A, " deaths over the years.", sep = ""))
+print(paste("The Event Type causing Maximum Damage to Human Population in the US is ", overall.A, ". It caused a total of ", overall.total.A, " casualities over the years.", sep = ""))
+
+```
+
+##Most Harmful Event for the Economy
+```{r question two}
+#2. Event Type vs. Economic Consequences
+weather3 <- weather[,c(8,25,27)]
+
+#collecting event type data for which casualities > 0
+econ.damage <- data.frame(event = weather3[which(weather3$PROPDMG != 0 | 
+                                                   weather3$CROPDMG != 0),1],
+                          prop.dmg = weather3[which(weather3$PROPDMG != 0| 
+                                                   weather3$CROPDMG != 0),2],
+                          crop.dmg = weather3[which(weather3$PROPDMG != 0 | 
+                                                   weather3$CROPDMG != 0),3])
+
+#grouping and calculating total damage according to event type
+econ.damage2 <- aggregate(econ.damage[,2:3], by = list(econ.damage$event), FUN = sum)
+colnames(econ.damage2) <- c("Events", "Property_Damage", "Crop_Damage")
+summary(econ.damage2)
+
+#Number of disasters is too large to plot, and the mean is very skewed. Therefore, we select a few major #disasters, each with a large amount of damage
+major.disasters2 <- econ.damage2[which(econ.damage2$Property_Damage >= 50000 & econ.damage2$Crop_Damage >= 10000),]
+major.disasters2$Total <- major.disasters2$Property_Damage + major.disasters2$Crop_Damage
+
+#Plotting
+ggplot(major.disasters2, aes(Events)) +
+  geom_bar(aes(y = Property_Damage/1000000, fill = "Property Damage"), stat = "Identity") + #Property Dmg.
+  geom_bar(aes(y = Crop_Damage/1000000, fill = "Crop Damage"), stat = "Identity") +         #Crop Dmg.
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +           #rotating axis labels
+  labs(y = "Count (x10^6)", title = "Most Destructive Weather Events \nfor the Economy (Crop and Property) in the US") + 
+  scale_fill_discrete(name = "Type of Damage") +                                    #editing legend title
+  theme(plot.title = element_text(hjust = 0.5))                                     #aligning plot title
+
+#summary of data
+max1.B <- major.disasters2[which.max(major.disasters2$Property_Damage),1]
+total1.B <- major.disasters2[which(major.disasters2$Events == max1.B),2]
+max2.B <- major.disasters2[which.max(major.disasters2$Crop_Damage),1]
+total2.B <- major.disasters2[which(major.disasters2$Events == max2.B),3]
+overall.B <- major.disasters2[which.max(major.disasters2$Total),1]
+overall.total.B <- major.disasters2[which(major.disasters2$Events == overall.B),4]
+
+#printing summary
+print(paste("The Event Type causing maximum Property Damage in the US is ", max1.B, ". It caused a total of ", total1.B, " worth of damage over the years.", sep = ""))
+print(paste("The Event Type causing maximum Crop in the US is ", max2.B, ". It caused a total of ", total2.B, " worth of damage over the years.", sep = ""))
+print(paste("The Event Type causing Maximum Damage to the Economy in the US is ", overall.B, ". It caused a total of ", overall.total.B, " worth of damage over the years.", sep = ""))
+```
+
+#Results
+Through our analysis of the weather data, we can reach two important conclusions -
+
+1. The most harmful weather event to human population are **tornadoes**, followed by excessive heat, floods, and TSTM winds. Tornadoes are the cause for the *largest number of deaths as well as injuries* throughout the USA.
+2. The most harmful weather event to the economy of the US are **tornadoes**, followed by flash floods, and TSTM winds. Tornadoes are the cause for the *largest amount of property damage*, while **hail** is responsible for the **largest amount of crop damage** across the country.
+
+Thus, we conclude our analysis.
+
+---
+###Reproducible Research - Project 2 (04-10-2019)
